@@ -4,8 +4,6 @@ from typing import Any, Awaitable, Callable, Optional
 
 from discord.http import Route
 
-from .slash_cog import SlashCog
-
 
 def compare_list(a, b):
     b = b.copy()
@@ -60,7 +58,7 @@ class _GroupMixin:
 
 class _Callable:
     callback: Callable[..., Awaitable[Any]]
-    cog: Optional[SlashCog]
+    cog: Optional["SlashCog"]
 
     def __call__(self, *args, **kwargs):
         if self.cog:

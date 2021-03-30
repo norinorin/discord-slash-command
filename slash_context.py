@@ -37,17 +37,18 @@ class SlashContext:
     def get_command(self, command, options):
         for option in options:
             options = option.options
-            self.invoked_subcommand = command.commands.get(option.name)
-            self.invoked_subcommand_group = command.groups.get(option.name)
-            if self.invoked_subcommand or self.invoked_subcommand_group:
+            temp_subcommand = command.commands.get(option.name)
+            temp_subcommand_group = command.groups.get(option.name)
+            if temp_subcommand or temp_subcommand_group:
                 break
 
-        if self.invoked_subcommand:
-            command = self.invoked_subcommand
-        elif self.invoked_subcommand_group:
+        if temp_subcommand:
+            command = self.invoked_subcommand = temp_subcommand
+        elif temp_subcommand_group:
+            self.invoked_subcommand_group = temp_subcommand_group
             return self.get_command(self.invoked_subcommand_group, options)
 
-        return command, {option.name: option for option in options}
+        return command, {option.name: option.value for option in options}
 
     async def invoke(self):
         if not self.command:
