@@ -114,26 +114,6 @@ class SlashCommand(_GroupMixin, _Callable):
     def __hash__(self):
         return hash(self.name)
 
-    def get_route(self, application_id=None):
-        application_id = application_id or self.application_id
-
-        if not application_id:
-            raise RuntimeError("Missing 'application_id' attribute or parameter")
-
-        if not self.id:
-            return Route(
-                "POST",
-                "/applications/{application_id}/commands",
-                application_id=self.application_id,
-            )
-
-        return Route(
-            "PATCH",
-            "/applications/{application_id}/commands/{id}",
-            application_id=self.application_id,
-            id=self.id,
-        )
-
     def to_dict(self):
         if not self.application_id:
             raise RuntimeError("'application_id' is None")

@@ -38,7 +38,9 @@ class SlashContext:
         for option in options:
             options = option.options
             temp_subcommand = command.commands.get(option.name)
-            temp_subcommand_group = command.groups.get(option.name)
+            temp_subcommand_group = hasattr(command, "groups") and command.groups.get(
+                option.name
+            )
             if temp_subcommand or temp_subcommand_group:
                 break
 
