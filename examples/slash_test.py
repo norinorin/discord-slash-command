@@ -76,7 +76,6 @@ class SlashTest(slash_commands.SlashCog):
 
         # send the initial response
         await ctx.send("Creating the card...")
-        local_file = not isinstance(spotify, discord.Spotify)
 
         with BytesIO() as image:
             (
@@ -92,7 +91,7 @@ class SlashTest(slash_commands.SlashCog):
                 artists,
                 title,
                 album_title,
-                local_file,
+                not isinstance(spotify, discord.Spotify),
                 bool(hidden),
                 None,
                 timestamp=timestamp,
