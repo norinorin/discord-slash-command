@@ -2,7 +2,7 @@ from discord.http import Route
 from discord.ext.commands.bot import BotBase
 
 from .core import SlashCommand, slash_command
-from .slash_context import SlashContext
+from .context import SlashContext
 from .interaction import InteractionType, Interaction
 
 
