@@ -1,3 +1,6 @@
+from inspect import signature, _empty
+
+import aiohttp
 from discord.http import Route
 from discord import utils, Object
 
@@ -13,6 +16,10 @@ class SlashContext:
         self.command = self.bot.get_slash_command(self.interaction.data.name)
         self.invoked_subcommand_group = None
         self.invoked_subcommand = None
+
+    @property
+    def author(self):
+        return self.interaction.author
 
     @property
     def guild_id(self):
@@ -35,13 +42,14 @@ class SlashContext:
         )
 
     def get_command(self, command, options):
+        temp_subcommand, temp_subcommand_group = None, None
         for option in options:
-            options = option.options
             temp_subcommand = command.commands.get(option.name)
             temp_subcommand_group = hasattr(command, "groups") and command.groups.get(
                 option.name
             )
             if temp_subcommand or temp_subcommand_group:
+                options = option.options
                 break
 
         if temp_subcommand:
@@ -61,11 +69,14 @@ class SlashContext:
             command, options = self.get_command(
                 self.command, self.interaction.data.options
             )
+            parameters = signature(command.callback).parameters
             options.update(
                 {
                     option.name: None
                     for option in command.options
                     if option.name not in options
+                    and parameters[option.name].default
+                    is _empty  # don't override the default value
                 }
             )
             await command(self, **options)
@@ -83,11 +94,16 @@ class SlashContext:
         embed=None,
         embeds=[],
         allowed_mentions=None,
-        ephemeral=False
+        ephemeral=False,
+        file=None,
+        files=[],
     ):
         state = self._state
         if embed and embeds:
             raise RuntimeError("Both 'embed' and 'embeds' are specified.")
+
+        if file and files:
+            raise RuntimeError("Both 'file' and 'files' are specified.")
 
         if embed is not None:
             embeds = [embed]
@@ -106,21 +122,55 @@ class SlashContext:
                 state.allowed_mentions and state.allowed_mentions.to_dict()
             )
 
-        json = dict(
-            type=int(type),
-            data=dict(
-                content=content,
-                embeds=embeds,
-                allowed_mentions=allowed_mentions,
-                tts=tts,
-            ),
-        )
-        if ephemeral:
-            json["data"]["flags"] = 64
-
         r = Route(
             "POST",
-            "/interactions/{interaction.id}/{interaction.token}/callback",
+            "/interactions/{interaction.id}/{interaction.token}/callback"
+            if type is not None
+            else "/webhooks/{application_id}/{interaction.token}",
             interaction=self.interaction,
+            application_id=self.bot.user.id,
         )
-        return state.http.request(r, json=json)
+
+        if file:
+            files = [file]
+
+        json = dict(
+            content=content,
+            embeds=embeds,
+            allowed_mentions=allowed_mentions,
+            tts=tts,
+        )
+        kwargs = {}
+        if files:
+            form = aiohttp.FormData()
+            form.add_field("payload_json", utils.to_json(json))
+            multiple_files = len(files) > 1
+            for idx, file in enumerate(files):
+                name = f"file{idx if multiple_files else ''}"
+                form.add_field(
+                    name,
+                    file.fp,
+                    filename=file.filename,
+                    content_type="application/octet-stream",
+                )
+            kwargs["data"] = form
+            kwargs["files"] = files
+        else:
+            json = dict(
+                type=int(type),
+                data=json,
+            )
+            if ephemeral:
+                json["data"]["flags"] = 64
+
+            kwargs["json"] = json
+
+        try:
+            return state.http.request(r, **kwargs)
+        finally:
+            if files:
+                for file in files:
+                    file.close()
+
+    def acknowledge(self):
+        return self.send(type=InteractionResponseType.ACKNOWLEDGE)

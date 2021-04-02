@@ -71,35 +71,8 @@ class BotPatcher:
 
         return decorator
 
-    async def sync_slash_commands(self):
-        r = Route(
-            "GET",
-            "/applications/{application_id}/commands",
-            application_id=self.bot.user.id,
-        )
-        commands = {
-            command["name"]: SlashCommand.make_dummy(command)
-            for command in await self.bot.http.request(r)
-        }
-
-        to_post = []
-        for name, command in self.bot.slash_commands.items():
-            found = commands.get(name)
-
-            if not found or found != command:
-                self.bot.logger.info("Posting or Patching %s", command)
-                to_post.append(command)
-            elif command.id is None:
-                command.id = found.id
-
-        data = await self.bot.post_slash_commands(to_post)
-        for entry in data:
-            command = self.bot.get_slash_command(entry["name"])
-            command.id = int(entry.get("id"))
-
-        for name, command in commands.items():
-            if name not in self.bot.slash_commands:
-                await self.bot.http.delete_slash_command(command.id)
+    def sync_slash_commands(self):
+        return self.put_slash_commands(self.bot.slash_commands.values())
 
     async def on_slash_command_error(self, ctx, error):
         self.bot.logger.error(
@@ -113,9 +86,9 @@ class BotPatcher:
             if cog.__module__ == name:
                 cog.teardown()
 
-    def post_slash_commands(self, commands, guild_id=None):
+    def put_slash_commands(self, commands, guild_id=None):
         r = Route(
-            "POST",
+            "PUT",
             "/applications/{application_id}/commands"
             if not guild_id
             else "/applications/{application_id}/guilds/{guild_id}/commands",
@@ -123,7 +96,7 @@ class BotPatcher:
             guild_id=guild_id,
         )
         return self.bot.http.request(
-            r, json=[command.to_dict() for command in commands]
+            r, json=[command.to_dict(with_id=False) for command in commands]
         )
 
     async def on_socket_response(self, p):
@@ -149,7 +122,7 @@ class BotPatcher:
             "sync_slash_commands",
             "on_slash_command_error",
             "_remove_module_references",
-            "post_slash_commands",
+            "put_slash_commands",
         ]
 
         for attr in attrs:

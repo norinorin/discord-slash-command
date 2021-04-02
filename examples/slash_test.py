@@ -1,11 +1,12 @@
 import random
+from io import BytesIO
 
 import discord
 
-import slash_command
+import slash_commands
 
 
-class SlashTest(slash_command.SlashCog):
+class SlashTest(slash_commands.SlashCog):
     def __init__(self, bot):
         super().__init__(bot)
 
@@ -13,26 +14,21 @@ class SlashTest(slash_command.SlashCog):
     def get_gay_rate():
         return random.randint(0, 201)
 
-    @slash_command.slash_command(description="A Test!")
+    @slash_commands.slash_command(description="A Test!")
     async def test(self, ctx):
         await ctx.send("Tested!")
 
-    @slash_command.slash_command(description="The gay command.")
+    @slash_commands.slash_command(description="The gay command.")
     async def gay(self, ctx):
         ...  # just make an entry for the sub commands
         # as it's pretty much useless to implement something here
         # since this won't show up when using slash commands
 
-    @gay.command(description="See how gay someone is.", required=False)
+    @gay.command(description="See how gay someone is.")
     async def user(
         self,
         ctx,
-        user: slash_command.SlashOption(
-            "user",
-            type=slash_command.SlashOptionType.USER,
-            description="The user",
-            required=False,
-        ),
+        user: slash_commands.SlashOption.user("user", description="The user"),
     ):
         if user:
             user = self.bot.get_user(user) or await self.bot.fetch_user(user)
@@ -40,7 +36,7 @@ class SlashTest(slash_command.SlashCog):
 
         await ctx.send(f"You're {self.get_gay_rate()}% gay!")
 
-    @gay.command(description="See how gay a random user is.", required=False)
+    @gay.command(description="See how gay a random user is.")
     async def random(self, ctx):
         if not ctx.guild_id:
             return await ctx.send(
@@ -51,6 +47,66 @@ class SlashTest(slash_command.SlashCog):
         user_id = random.choice(guild._partial_members)
         user = self.bot.get_user(user_id) or await self.bot.fetch_user(user_id)
         await ctx.send(f"{user} is {self.get_gay_rate()}% gay!")
+
+    @slash_commands.slash_command(description="Sends a spotify card")
+    async def spotify(
+        self,
+        ctx,
+        user: slash_commands.SlashOption.user("user", description="The user"),
+        hidden: slash_commands.SlashOption.boolean(
+            "hidden", description="Hide the progress bar"
+        ) = False,
+        style: slash_commands.SlashOption.string(
+            "style",
+            description="The style",
+            choices=[
+                slash_commands.SlashOptionChoice("1", value="1"),
+                slash_commands.SlashOptionChoice("2", value="2"),
+            ],
+        ) = "2",
+    ):
+        images = self.bot.get_cog("Images")
+        member = user or ctx.author.id
+        spotify = (spotify := self.bot._presences.get(member)) and spotify[0]
+        if not spotify:
+            n = "You" if member == ctx.author.id else "They"
+            return await ctx.send(f"{n} have no Spotify activity")
+
+        local_file = not isinstance(spotify, discord.Spotify)
+
+        with BytesIO() as image:
+            (
+                timestamp,
+                album_url,
+                artists,
+                title,
+                album_title,
+            ) = await images._get_data(spotify, ctx.author)
+            im = await images._get_spotify_card(
+                style,
+                album_url,
+                artists,
+                title,
+                album_title,
+                local_file,
+                bool(hidden),
+                None,
+                timestamp=timestamp,
+            )
+            im.save(image, "PNG")
+
+            # I'm so mad
+            im.close()
+            del im
+
+            image.seek(0)
+            await ctx.send("Creating the card...")
+            await ctx.send(
+                type=None,
+                file=discord.File(fp=image, filename=f"{member}-card.png"),
+            )
+
+            del image
 
 
 def setup(bot):

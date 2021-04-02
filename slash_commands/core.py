@@ -114,7 +114,7 @@ class SlashCommand(_GroupMixin, _Callable):
     def __hash__(self):
         return hash(self.name)
 
-    def to_dict(self):
+    def to_dict(self, with_id=True):
         if not self.application_id:
             raise RuntimeError("'application_id' is None")
 
@@ -125,7 +125,7 @@ class SlashCommand(_GroupMixin, _Callable):
             options=[option.to_dict() for option in self.options],
         )
 
-        if self.id:
+        if self.id and with_id:
             d["id"] = self.id
 
         return d
@@ -176,7 +176,7 @@ class _BaseSlashOption:
     _type = NotImplemented
 
     def __init__(
-        self, name, *, description, required, choices=[], options=[], **kwargs
+        self, name, *, description, required=False, choices=[], options=[], **kwargs
     ):
         super().__init__(**kwargs)
         self.name = name

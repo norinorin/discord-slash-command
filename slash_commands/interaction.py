@@ -27,12 +27,16 @@ class Interaction:
         self.data = "data" in data and InteractionData(data["data"])
         self.guild_id = _get_as_snowflake(data, "guild_id")
         self.channel_id = _get_as_snowflake(data, "channel_id")
-        self.member = (
-            "member" in data
-            and (guild := state._get_guild(self.guild_id))
-            and Member(data=data["member"], guild=guild, state=state)
+        self.author = (
+            (
+                "member" in data
+                and Member(data=data["member"], guild=guild, state=state)
+                if (guild := state._get_guild(self.guild_id))
+                else User(state=state, data=data["member"]["user"])
+            )
+            or "user" in data
+            and User(state=state, data=data["user"])
         )
-        self.user = "user" in data and User(state=state, data=data["user"])
         self.token = data["token"]
         self.version = data["version"]
 
