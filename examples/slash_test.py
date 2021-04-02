@@ -43,8 +43,8 @@ class SlashTest(slash_commands.SlashCog):
                 "This is a guild-only command"  # maybe implement a decorator some day?
             )  # or I can make it so that it's compatible with discord.py's decorators :thonk:
 
-        guild = self.bot.get_guild(ctx.guild_id)
-        user_id = random.choice(guild._partial_members)
+        # _partial_members is my own thing, it's just an array of member IDs
+        user_id = random.choice(ctx.guild._partial_members)
         user = self.bot.get_user(user_id) or await self.bot.fetch_user(user_id)
         await ctx.send(f"{user} is {self.get_gay_rate()}% gay!")
 
@@ -65,6 +65,8 @@ class SlashTest(slash_commands.SlashCog):
             ],
         ) = "2",
     ):
+        # again, this is my own thing, the purpose of this example
+        # is to show how you can add options, choices and whatnot
         images = self.bot.get_cog("Images")
         member = user or ctx.author.id
         spotify = (spotify := self.bot._presences.get(member)) and spotify[0]
@@ -72,6 +74,8 @@ class SlashTest(slash_commands.SlashCog):
             n = "You" if member == ctx.author.id else "They"
             return await ctx.send(f"{n} have no Spotify activity")
 
+        # send the initial response
+        await ctx.send("Creating the card...")
         local_file = not isinstance(spotify, discord.Spotify)
 
         with BytesIO() as image:
@@ -94,19 +98,13 @@ class SlashTest(slash_commands.SlashCog):
                 timestamp=timestamp,
             )
             im.save(image, "PNG")
-
-            # I'm so mad
-            im.close()
-            del im
-
             image.seek(0)
-            await ctx.send("Creating the card...")
+
+            # send the actual card
             await ctx.send(
                 type=None,
                 file=discord.File(fp=image, filename=f"{member}-card.png"),
             )
-
-            del image
 
 
 def setup(bot):
