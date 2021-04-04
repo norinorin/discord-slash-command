@@ -1,6 +1,7 @@
 from inspect import signature, _empty
 
 import aiohttp
+import discord
 from discord.http import Route
 from discord import utils, Object
 
@@ -70,16 +71,23 @@ class SlashContext:
                 self.command, self.interaction.data.options
             )
             parameters = signature(command.callback).parameters
-            options.update(
-                {
-                    option.name: None
-                    for option in command.options
-                    if option.name not in options
-                    and parameters[option.name].default
-                    is _empty  # don't override the default value
-                }
-            )
+
+            for option in command.options:
+                if option.name not in options:
+                    if parameters[option.name].default is _empty:
+                        options[option.name] = None
+                    continue
+
+                if (val := options[option.name]) is None:
+                    continue
+
+                if option.type > 5:
+                    # case where the value is a snowflake
+                    # since option 6, 7, and 8 return snowflakes
+                    options[option.name] = int(val)
+
             await command(self, **options)
+
         except Exception as e:
             self.bot.dispatch("slash_command_error", self, e)
         else:

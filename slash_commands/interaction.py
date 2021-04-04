@@ -61,4 +61,4 @@ class InteractionDataOption(_BaseOptions):
     def __init__(self, data):
         super().__init__(data)
         self.name = data["name"]
-        self.value = int(value) if (value := data.get("value")).isdigit() else value
+        self.value = data.get("value")
