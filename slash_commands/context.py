@@ -43,7 +43,7 @@ class SlashContext:
         )
 
     def get_command(self, command, options):
-        temp_subcommand, temp_subcommand_group = None, None
+        temp_subcommand = temp_subcommand_group = None
         for option in options:
             temp_subcommand = command.commands.get(option.name)
             temp_subcommand_group = hasattr(command, "groups") and command.groups.get(
